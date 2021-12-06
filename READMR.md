@@ -58,7 +58,7 @@ export P4A_RELEASE_KEYALIAS_PASSWD="schedule"
 export P4A_RELEASE_KEYALIAS="schedule"
 ```
 
-4. cd <your-project-folder>
+4. cd your-project-folder
 
 ```
 buildozer -v android release
