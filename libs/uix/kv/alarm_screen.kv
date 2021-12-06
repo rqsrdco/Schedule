@@ -1,0 +1,205 @@
+#:import get_color_from_hex kivy.utils.get_color_from_hex
+#:import SE kivy.effects.scroll.ScrollEffect
+
+#:import FakeCircularElevationBehavior kivymd.uix.behaviors.FakeCircularElevationBehavior
+
+#:set text_color get_color_from_hex('#ffffff')
+#:set bg_color get_color_from_hex('#282a43')
+#:set option_color get_color_from_hex('#a0abc3')
+
+<AlarmScreen>
+    alarm_option: scheduled_alarm
+
+    op4h44m_284: op4h44m_284
+    op6h14m_374: op6h14m_374
+    op7h44m_464: op7h44m_464
+    op9h14m_554: op9h14m_554
+
+    md_bg_color: bg_color
+    
+    MDRelativeLayout:
+        md_bg_color: bg_color
+        pos_hint: {"top": 1}
+        size_hint_y: .7
+        padding: dp(10), dp(10), dp(10), dp(10)
+        spacing: dp(10)
+        MDLabel:
+            text: root.current_datetime
+            halign: "center"
+            bold: True
+            adaptive_height: True
+            font_size: "14sp"
+            theme_text_color: "Custom"
+            text_color: text_color
+            pos_hint: {"top": .97}
+        MDLabel:
+            text: "Chọn thời gian bạn muốn thức dậy làm việc"
+            halign: "left"
+            adaptive_height: True
+            font_size: "14sp"
+            theme_text_color: "Custom"
+            text_color: get_color_from_hex("#a0abc3")
+            pos_hint: {"top": .9}
+            x: dp(18)
+        MDBoxLayout:
+            id: box_action
+            spacing: "12dp"
+            padding: dp(6), 0, dp(6), 0
+            pos_hint: {"top": .83}
+            size_hint_y: None
+            height: self.minimum_height
+            #y: root.height - self.height - dp(10)
+
+            MDFloatingActionButton:
+                id: btn_add_alarm
+                icon: "alarm-plus"
+                md_bg_color: option_color
+                type: "standard"
+                text_color: text_color
+                on_release: root.add_alarm()
+                size_hint: None, None
+                size: dp(48), dp(48)
+
+            OptionAlarm:
+                id: scheduled_alarm
+                size_hint: 1, None
+                height: dp(55)
+                id_number: 0
+            MDFloatingActionButton:
+                id: btn_set_alarm
+                icon: "alarm-snooze" if app.activity_alarm else "alarm"
+                md_bg_color: app.theme_cls.primary_color if app.activity_alarm else option_color
+                type: "standard"
+                text_color: text_color
+                on_release: app.set_alarm(root.alarm_option)
+                size_hint: None, None
+                size: dp(48), dp(48)
+    MDRelativeLayout:
+        id: calc_time
+        opacity: 1
+        #spacing: dp(12)
+        padding: dp(12)
+        md_bg_color: option_color
+        size_hint_y: .22
+        radius: [dp(27),dp(27), dp(12), dp(12)]
+        y: root.height/2
+        Card:
+            id: card_calc_time
+            opacity: 1
+            pos_hint: {"center_x": 0.5}
+            y: self.parent.height - self.height/2
+
+            MDLabel:
+                id: lbl_calc_time
+                text: "Mốc thời gian bạn nên đi ngủ để dậy làm việc"
+                markup: True
+                halign: "center"
+                font_size: "12sp"
+                theme_text_color: "Custom"
+                text_color: text_color
+        ScrollView:
+            id: srv_list_calc
+            bar_width: 0
+            do_scroll: (True, False)
+            size_hint_y: None
+            effect_cls: SE
+            height: self.parent.height - card_calc_time.height/2- dp(24)
+            y: card_calc_time.y - self.height - dp(12)
+            MDGridLayout:
+                id: grv_list_calc
+                md_bg_color: option_color
+                radius: [0, 0, dp(12),dp(12)]
+                rows: 1
+                spacing: dp(12)
+                padding: dp(12),dp(12),dp(12),0
+                size_hint_x: None
+                width: self.minimum_width
+    MDRelativeLayout:
+        id: guest
+        spacing: dp(12)
+        padding: dp(12)
+        md_bg_color: option_color
+        size_hint_y: .45
+        radius: [dp(39), dp(39), 0, 0]
+        pos_hint: {"bottom": 1}
+        Card:
+            id: card_guest
+            pos_hint: {"center_x": 0.5}
+            y: self.parent.height - self.height/2
+
+            MDLabel:
+                id: lbl_guest
+                text: "Đi ngủ ngay bây giờ thì nên dặt báo thức : "
+                markup: True
+                halign: "center"
+                font_size: "12sp"
+                theme_text_color: "Custom"
+                text_color: text_color
+        ScrollView:
+            bar_width: 0
+            size_hint: 1, None
+            height: self.parent.height - card_guest.height - dp(12)
+            y: dp(12)
+            do_scroll: (False, True)
+            scroll_effect: SE
+            MDGridLayout:
+                id: grid_guest
+                cols: 1
+                spacing: dp(12)
+                padding: dp(12)
+                size: self.minimum_size
+                size_hint: None, None
+                OptionAlarm:
+                    id: op4h44m_284
+                    size: root.width * .94, dp(68)
+                    id_number: 3
+                OptionAlarm:
+                    id: op6h14m_374
+                    size: root.width * .94, dp(68)
+                    id_number: 3
+                OptionAlarm:
+                    id: op7h44m_464
+                    size: root.width * .94, dp(68)
+                    id_number: 3
+                OptionAlarm:
+                    id: op9h14m_554
+                    size: root.width * .94, dp(68)
+                    id_number: 3
+
+<Card@MDCard+FakeCircularElevationBehavior>
+    elevation: dp(6)
+    md_bg_color: option_color
+    size_hint: .72, None
+    height: dp(39)
+    radius: [self.height/2,]
+
+
+<OptionAlarm>
+    size_hint: None, None
+    size: root.size
+    padding: [dp(12),]
+    spacing: dp(6) if not root.id_number == 0 else dp(3)
+    radius: [dp(18),]
+    md_bg_color: app.theme_cls.primary_color if root.id_number == 0 and app.activity_alarm else option_color
+    elevation: dp(7)
+    ripple_behavior: True
+    MDLabel:
+        id: lbl_time
+        text: root.text
+        markup: True
+        font_style: "Caption"
+        font_size: "14sp" if not root.id_number == 0 else "12sp"
+        theme_text_color: "Custom"
+        text_color: text_color
+    MDCheckbox:
+        id: chk_alarm
+        group: "alarm_switch" if not root.id_number == 0 else "scheduled_alarm_switch"
+        size_hint: None, None
+        size: (0, 0) if root.id_number == 0 else (dp(48), dp(48))
+        pos_hint: {"center_x": .5, "center_y": .5}
+        on_active:
+            if root.id_number in [0,2,3]: app.actions_filter(*args)
+        radio_icon_normal: "information-variant" if root.id_number == 1 else "" if root.id_number == 0 else "alarm-plus"
+        radio_icon_down: "information-variant" if root.id_number ==1 else "" if root.id_number == 0 else "alarm-check"
+        selected_color: app.theme_cls.primary_color
+        unselected_color: app.theme_cls.primary_color if root.id_number == 1 else option_color
