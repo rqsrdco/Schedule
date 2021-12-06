@@ -28,7 +28,7 @@ version.filename = %(source.dir)s/main.py
 
 # comma separated e.g. requirements = sqlite3,kivy
 
-requirements = python3,kivy==master,https://github.com/kivymd/KivyMD/archive/master.zip,pygments,sdl2_ttf==2.0.15,pillow,openssl,urllib3,certifi,requests,chardet,idna,android,plyer,pyjnius
+requirements = python3,kivy==master,https://github.com/kivymd/KivyMD/archive/master.zip,pygments,sdl2_ttf==2.0.15,pillow,openssl,urllib3,certifi,requests,chardet,idna,android,plyer,pyjnius,oscpy
 
 presplash.filename = %(source.dir)s/assets/icons/presplash.png
 
@@ -40,7 +40,7 @@ icon.filename = %(source.dir)s/assets/icons/logo.png
 
 orientation = portrait
 
-services = Rqsrdservice:service/main.py:foreground
+services = Rqsrdservice:service/main.py
 # change the major version of python used by the app
 
 osx.python_version = 3

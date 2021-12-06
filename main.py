@@ -76,7 +76,7 @@ if platform == 'android':
 else:
     SDK_INT = None
 
-_Debug = True
+_Debug = False
 if _Debug:
     Config.set('kivy', 'log_level', 'debug')
 
@@ -147,9 +147,7 @@ class AlarmClockApp(MDApp):
 
     def request_app_permissions(self, list_permissions=[]):
         global APP_STARTUP_PERMISSIONS
-        print('AlarmClockApp.request_app_permissions')
         ret = request_permissions(list_permissions or APP_STARTUP_PERMISSIONS)
-        print('AlarmClockApp.request_app_permissions : %r' % ret)
 
     def start_service(self):
         context = mActivity.getApplicationContext()
@@ -171,7 +169,6 @@ class AlarmClockApp(MDApp):
             default=True,
         )
         server.bind(b'/date', self.date_msg)
-
         self.client = OSCClient(b'localhost', 3000)
         return AlarmScreen()
 
@@ -229,9 +226,8 @@ class AlarmClockApp(MDApp):
         self.time_dialog.set_time(time(hour=today.hour, minute=today.minute))
 
     def on_start(self):
-        print("App.on_start")
         if platform == 'android':
-            # self.request_app_permissions()
+            self.request_app_permissions()
             self.start_service()
             activity.bind(on_new_intent=self.on_new_intent)
             self.on_new_intent(mActivity.getIntent())
@@ -239,29 +235,15 @@ class AlarmClockApp(MDApp):
         Clock.schedule_interval(self.root.update_current_datetime_guest, 1)
 
     def on_pause(self):
-        print("App.on_pause")
         Clock.unschedule(self.root.update_current_datetime_guest)
         self.stop_service()
         return True
 
     def on_resume(self):
-        print("App.on_resume")
-        print(os.environ['ANDROID_ARGUMENT'])
         Clock.schedule_interval(self.root.update_current_datetime_guest, 1)
         self.start_service()
 
-    def on_stop(self):
-        print("App.on_stop")
-
-    @mainthread
     def on_new_intent(self, intent):
-        print("---------App.on_new_intent---------")
-        print("intent.getAction() = ", intent.getAction())
-        print("intent.getPackage() = ", intent.getPackage())
-        print("intent.getExtras() = ", intent.getExtras())
-        print("intent.getFlags() = ", intent.getFlags())
-        print(intent.getBooleanExtra("alarmIsOn", False),
-              intent.getStringExtra("exit"))
         if intent.getStringExtra("exit") == "exit":
             self.handle_exit_app()
         if intent.getBooleanExtra("alarmIsOn", False):
@@ -271,7 +253,6 @@ class AlarmClockApp(MDApp):
             self.activity_alarm = False
             cancel_notification()
             RqsAlarmSchedule().dimiss_alarm()
-        print("---------App.on_new_intent---------")
 
     def on_timestamp_data(self, instance, value):
         if value is None:
@@ -312,10 +293,10 @@ class AlarmClockApp(MDApp):
                 task.get("alarm_time"),
                 self.str_timestamp
             )
-            self.timestamp_data = alarm_datetime
             now = datetime.now()
             if alarm_datetime > now:
                 self.root.alarm_option.option_timestamp = alarm_datetime
+                self.timestamp_data = alarm_datetime
                 self.activity_alarm = True
             else:
                 self.root.alarm_option.option_timestamp = None
@@ -348,7 +329,6 @@ class AlarmClockApp(MDApp):
                     "description": description
                 }
                 self.timestamp_data = object.option_timestamp
-                print(object.option_timestamp.strftime("%a %I:%M %p %d-%m"))
                 RqsAlarmSchedule().create_alarm(object.option_timestamp,
                                                 title, ticker, description)
                 self.save_scheduled_task(task)
@@ -380,13 +360,10 @@ class AlarmClockApp(MDApp):
         )
 
     def save_scheduled_task(self, task: dict):
-        print("---------> save_scheduled_task")
         with open(self.resource_path("assets/scheduled.json"), 'w', encoding='utf-8') as f:
             json.dump(task, f, indent=4)
-        print("save_scheduled_task-------> done")
 
     def load_scheduled_task(self) -> dict:
-        print("---------> load_scheduled_task")
         with open(self.resource_path("assets/scheduled.json")) as f:
             task = json.load(f)
             return task

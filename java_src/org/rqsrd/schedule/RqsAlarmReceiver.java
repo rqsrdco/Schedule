@@ -156,29 +156,6 @@ public class RqsAlarmReceiver extends BroadcastReceiver {
                 if (action.equals(Intent.ACTION_BOOT_COMPLETED)) {
                     Log.d(TAG, "Received boot completed.");
                     this.startServiceDirectly(context, RunAfterBootService.class);
-                    try{
-                        Intent ix = new Intent(context, ServiceRqsrdservice.class);
-                        String argument = context.getFilesDir().getAbsolutePath() + "/app";
-                        ix.putExtra("androidPrivate", context.getFilesDir().getAbsolutePath());
-                        ix.putExtra("androidArgument", argument);
-                        ix.putExtra("serviceTitle", "Reaction");
-                        ix.putExtra("serviceDescription", "Rqsrdservice");
-                        ix.putExtra("serviceEntrypoint", "service/main.py");
-                        ix.putExtra("pythonName", "Rqsrdservice");
-                        ix.putExtra("pythonHome", argument);
-                        ix.putExtra("pythonPath", argument + ":" + argument + "/lib");
-                        ix.putExtra("pythonServiceArgument", "wakeup");
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            ix.putExtra("serviceStartAsForeground", "true");
-                            context.startForegroundService(ix);
-                        } else {
-                            ix.putExtra("serviceStartAsForeground", "false");
-                            context.startService(ix);
-                        }
-                    }catch(Exception e){
-                        Log.e(TAG, e.getMessage());
-                        Log.d(TAG, e.getMessage());
-                    }
                 }
             }
         }

@@ -51,9 +51,6 @@ if __name__ == '__main__':
     argument = json.loads(argument) if argument else None
     argument = {} if argument is None else argument
     logging.info('argument=%r', argument)
-    if argument.get('wakeup'):
-        logging.info('wakeup')
-        wake_app()
     try:
         SERVER = OSCThreadServer()
         SERVER.listen('localhost', port=3000, default=True)

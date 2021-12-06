@@ -38,7 +38,6 @@ class RqsAlarmSchedule:
 
     @run_on_ui_thread
     def enable_receiver(self):
-        print("------[enable_receiver]------")
         receiver = ComponentName(context, RqsAlarmReceiver)
         pm = context.getPackageManager()
         pm.setComponentEnabledSetting(
@@ -46,7 +45,6 @@ class RqsAlarmSchedule:
 
     @run_on_ui_thread
     def disable_receiver(self):
-        print("------[disable_receiver]------")
         receiver = ComponentName(context, RqsAlarmReceiver)
         pm = context.getPackageManager()
         pm.setComponentEnabledSetting(
@@ -54,7 +52,6 @@ class RqsAlarmSchedule:
 
     @run_on_ui_thread
     def create_alarm(self, alarm_time, alarm_title, alarm_ticker, alarm_description):
-        print("------[create_alarm]------")
         # enable receiver to receive the alarm
         self.enable_receiver()
         alarmSetTime = int(alarm_time.timestamp()*1000)
@@ -73,7 +70,6 @@ class RqsAlarmSchedule:
 
     @run_on_ui_thread
     def cancel_alarm(self):
-        print("------[cancel_alarm]------")
         alarmIntent = Intent()
         alarmIntent.setClass(context, RqsAlarmReceiver)
         alarmIntent.setAction("org.rqsrd.schedule.WAKEUP_ALARM")
@@ -89,7 +85,6 @@ class RqsAlarmSchedule:
 
     @run_on_ui_thread
     def dimiss_alarm(self):
-        print("------[dimiss_alarm]------")
         dimiss_alarm_intent = Intent()
         dimiss_alarm_intent.setClass(context, RqsAlarmReceiver)
         dimiss_alarm_intent.setAction("org.rqsrd.schedule.DISMISS_ALARM")
