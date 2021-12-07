@@ -44,6 +44,7 @@ if platform == 'android':
     Settings = autoclass('android.provider.Settings')
     PowerManager = autoclass('android.os.PowerManager')
     PackageManager = autoclass('android.content.pm.PackageManager')
+    String = autoclass('java.lang.String')
 
     from libs.applibs.toast import android_toast
     from libs.applibs.vibrator import AndroidVibrator
@@ -75,15 +76,6 @@ if platform == 'android':
     SDK_INT = autoclass('android.os.Build$VERSION').SDK_INT
 else:
     SDK_INT = None
-
-_Debug = False
-if _Debug:
-    Config.set('kivy', 'log_level', 'debug')
-
-Config.set('kivy', 'window_icon', 'assets/icons/logo.png')
-
-if 'ANDROID_ARGUMENT' not in os.environ:
-    Config.set('input', 'mouse', 'mouse,disable_multitouch')
 
 
 class AlarmClockApp(MDApp):
@@ -121,6 +113,7 @@ class AlarmClockApp(MDApp):
     str_timestamp = "%a %d/%m/%Y %I:%M %p"
     timestamp_data = P.ObjectProperty(allownone=True)
     service = None
+    pending_alarm = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -230,7 +223,7 @@ class AlarmClockApp(MDApp):
             self.request_app_permissions()
             self.start_service()
             activity.bind(on_new_intent=self.on_new_intent)
-            self.on_new_intent(mActivity.getIntent())
+            # self.on_new_intent(mActivity.getIntent())
         self.load_alarm_scheduled()
         Clock.schedule_interval(self.root.update_current_datetime_guest, 1)
 
@@ -240,54 +233,130 @@ class AlarmClockApp(MDApp):
         return True
 
     def on_resume(self):
-        Clock.schedule_interval(self.root.update_current_datetime_guest, 1)
         self.start_service()
+        Clock.schedule_interval(self.root.update_current_datetime_guest, 1)
+
+    def _get_audiomanager(self):
+        if not hasattr(self, 'audiomanager'):
+            if platform == 'android':
+                context = PythonActivity.mActivity.getApplicationContext()
+                Context = autoclass('android.content.Context')
+                self.audiomanager = context.getSystemService(
+                    Context.AUDIO_SERVICE)
+        return self.audiomanager
+
+    def _get_ringtone(self):
+        if not hasattr(self, 'ringtone'):
+            if platform == 'android':
+                RingtoneManager = autoclass('android.media.RingtoneManager')
+                AudioManager = autoclass('android.media.AudioManager')
+                u = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                self.ringtone = RingtoneManager.getRingtone(
+                    PythonActivity.mActivity.getApplicationContext(), u)
+                self.ringtone.setStreamType(AudioManager.STREAM_ALARM)
+        return self.ringtone
+
+    def _get_vibrator(self):
+        if not hasattr(self, 'vibrator') and platform == 'android':
+            Context = autoclass('android.content.Context')
+            self.vibrator = PythonActivity.mActivity.getApplicationContext().getSystemService(
+                Context.VIBRATOR_SERVICE)
+        return self.vibrator
+
+    @run_on_ui_thread
+    def set_window_flags(self):
+        LayoutParams = autoclass('android.view.WindowManager$LayoutParams')
+        mActivity.getWindow().addFlags(
+            LayoutParams.FLAG_KEEP_SCREEN_ON |
+            LayoutParams.FLAG_DISMISS_KEYGUARD |
+            LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+            LayoutParams.FLAG_TURN_SCREEN_ON)
+
+    @run_on_ui_thread
+    def reset_window_flags(self):
+        LayoutParams = autoclass('android.view.WindowManager$LayoutParams')
+        mActivity.getWindow().clearFlags(
+            LayoutParams.FLAG_KEEP_SCREEN_ON |
+            LayoutParams.FLAG_DISMISS_KEYGUARD |
+            LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+            LayoutParams.FLAG_TURN_SCREEN_ON)
+
+    def fire_alarm(self):
+        if platform == 'android':
+            AudioManager = autoclass('android.media.AudioManager')
+            am = self._get_audiomanager()
+            am.setStreamVolume(AudioManager.STREAM_ALARM,
+                               am.getStreamMaxVolume(
+                                   AudioManager.STREAM_ALARM),
+                               0)
+            self.ringer_mode = am.getRingerMode()
+            am.setRingerMode(AudioManager.RINGER_MODE_NORMAL)
+            self._get_ringtone().play()
+            self._get_vibrator().vibrate([0, 500, 500], 1)
+
+    def stop_alarm(self):
+        assert hasattr(self, 'ringer_mode')
+        self._get_ringtone().stop()
+        if platform == 'android':
+            AudioManager = autoclass('android.media.AudioManager')
+            am = self._get_audiomanager()
+            am.setStreamVolume(AudioManager.STREAM_ALARM,
+                               am.getStreamMaxVolume(
+                                   AudioManager.STREAM_ALARM),
+                               0)
+            am.setRingerMode(self.ringer_mode)
+            # am.setRingerMode(AudioManager.RINGER_MODE_SILENT)
+            self._get_vibrator().cancel()
+        # self.reset_window_flags()
 
     def on_new_intent(self, intent):
         if intent.getStringExtra("exit") == "exit":
             self.handle_exit_app()
         if intent.getBooleanExtra("alarmIsOn", False):
-            self.root.alarm_option.option_timestamp = None
+            time_temp = self.timestamp_data
             self.timestamp_data = None
-            self.save_scheduled_task(self.alarm_default)
-            self.activity_alarm = False
-            cancel_notification()
-            RqsAlarmSchedule().dimiss_alarm()
+            self.root.alarm_option.option_timestamp = time_temp
+            self.activity_alarm = True
+            self.pending_alarm = True
+            self.fire_alarm()
 
     def on_timestamp_data(self, instance, value):
-        if value is None:
-            self.root.alarm_option.ids.lbl_time.font_size = sp(14)
-            Clock.unschedule(self.show_time_remain)
-        else:
+        if value is not None:
             self.root.alarm_option.ids.lbl_time.font_size = sp(18)
             Clock.schedule_interval(self.show_time_remain, 1)
+        else:
+            self.root.alarm_option.ids.lbl_time.font_size = sp(14)
+            Clock.unschedule(self.show_time_remain)
 
     def show_time_remain(self, dt):
         now = datetime.now()
-        timeDelta = self.timestamp_data - now
-        hours, remainder = divmod(timeDelta.seconds, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        _text = "Còn "
-        if hours > 0:
-            _text += "%s giờ " % str(hours).zfill(2)
-        if minutes > 0:
-            _text += "%s phút " % str(minutes).zfill(2)
-            if seconds % 2 == 0:
-                _text += "(^_^)"
-            if seconds % 2 != 0:
-                _text += "(-_-)"
-        if minutes == 0 and hours == 0:
-            if seconds % 2 == 0:
-                _text = "~(^_^)~"
-            if seconds % 2 != 0:
-                _text = "_(-_-)_"
-        self.root.alarm_option.text = _text
+        if self.timestamp_data > now:
+            timeDelta = self.timestamp_data - now
+            hours, remainder = divmod(timeDelta.seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            _text = "Còn "
+            if hours > 0:
+                _text += "%s giờ " % str(hours).zfill(2)
+            if minutes > 0:
+                _text += "%s phút " % str(minutes).zfill(2)
+                if seconds % 2 == 0:
+                    _text += "(^_^)"
+                if seconds % 2 != 0:
+                    _text += "(-_-)"
+            if minutes == 0 and hours == 0:
+                if seconds % 2 == 0:
+                    _text = "~(^_^)~"
+                if seconds % 2 != 0:
+                    _text = "_(-_-)_"
+            self.root.alarm_option.text = _text
+        else:
+            self.timestamp_data = None
 
     def load_alarm_scheduled(self):
+        print("load_alarm_scheduled", self.pending_alarm)
         task = self.load_scheduled_task()
         if (not(task.get("alarm_time") and task.get("alarm_time").strip())):
             self.root.alarm_option.option_timestamp = None
-            self.timestamp_data = None
         else:
             alarm_datetime = datetime.strptime(
                 task.get("alarm_time"),
@@ -296,15 +365,14 @@ class AlarmClockApp(MDApp):
             now = datetime.now()
             if alarm_datetime > now:
                 self.root.alarm_option.option_timestamp = alarm_datetime
-                self.timestamp_data = alarm_datetime
                 self.activity_alarm = True
+                self.timestamp_data = alarm_datetime
             else:
-                self.root.alarm_option.option_timestamp = None
                 self.timestamp_data = None
-                self.save_scheduled_task(self.alarm_default)
-                self.activity_alarm = False
-                cancel_notification()
-                RqsAlarmSchedule().dimiss_alarm()
+                self.root.alarm_option.option_timestamp = alarm_datetime
+                self.activity_alarm = True
+                self.pending_alarm = True
+                self.fire_alarm()
 
     def set_alarm(self, object):
         if not self.activity_alarm:
@@ -333,16 +401,22 @@ class AlarmClockApp(MDApp):
                                                 title, ticker, description)
                 self.save_scheduled_task(task)
                 self.activity_alarm = True
-                #android_toast("Đã thiết lập thời gian báo thức !")
+                self.set_window_flags()
                 self.show_notification_setAlarm(
                     object.option_timestamp, ticker, description, text)
         else:
-            RqsAlarmSchedule().cancel_alarm()
+            if self.pending_alarm:
+                self.stop_alarm()
+                RqsAlarmSchedule().dimiss_alarm()
+            else:
+                RqsAlarmSchedule().cancel_alarm()
             self.save_scheduled_task(self.alarm_default)
             object.option_timestamp = None
             self.timestamp_data = None
             self.activity_alarm = False
+            self.pending_alarm = False
             cancel_notification()
+            self.reset_window_flags()
             android_toast("Đã hủy báo thức")
 
     def show_notification_setAlarm(self, time_set, ticker, description, text):

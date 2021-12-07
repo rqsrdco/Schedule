@@ -25,8 +25,6 @@ System = autoclass('java.lang.System')
 ComponentName = autoclass('android.content.ComponentName')
 PackageManager = autoclass('android.content.pm.PackageManager')
 
-# Autoclass our own java class
-#AlarmReceiver = autoclass('org.rqsrd.schedule.AlarmReceiver')
 RqsAlarmReceiver = autoclass('org.rqsrd.schedule.RqsAlarmReceiver')
 
 
@@ -36,21 +34,18 @@ class RqsAlarmSchedule:
         # mService.setAutoRestartService(False)
         self.requestCode = 181864
 
-    @run_on_ui_thread
     def enable_receiver(self):
         receiver = ComponentName(context, RqsAlarmReceiver)
         pm = context.getPackageManager()
         pm.setComponentEnabledSetting(
             receiver, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
 
-    @run_on_ui_thread
     def disable_receiver(self):
         receiver = ComponentName(context, RqsAlarmReceiver)
         pm = context.getPackageManager()
         pm.setComponentEnabledSetting(
             receiver, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
 
-    @run_on_ui_thread
     def create_alarm(self, alarm_time, alarm_title, alarm_ticker, alarm_description):
         # enable receiver to receive the alarm
         self.enable_receiver()
@@ -61,6 +56,7 @@ class RqsAlarmSchedule:
         alarmIntent.putExtra("title", String(alarm_title))
         alarmIntent.putExtra("ticker", String(alarm_ticker))
         alarmIntent.putExtra("description", String(alarm_description))
+        alarmIntent.putExtra("isBoot", False)
         pendingIntent = PendingIntent.getBroadcast(
             context, self.requestCode, alarmIntent, PendingIntent.FLAG_UPDATE_CURRENT)
         alarm = cast(
@@ -68,7 +64,6 @@ class RqsAlarmSchedule:
         alarm.setExactAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP, alarmSetTime, pendingIntent)
 
-    @run_on_ui_thread
     def cancel_alarm(self):
         alarmIntent = Intent()
         alarmIntent.setClass(context, RqsAlarmReceiver)
@@ -83,13 +78,12 @@ class RqsAlarmSchedule:
             alarm.cancel(pendingIntent)
         self.disable_receiver()
 
-    @run_on_ui_thread
     def dimiss_alarm(self):
         dimiss_alarm_intent = Intent()
         dimiss_alarm_intent.setClass(context, RqsAlarmReceiver)
-        dimiss_alarm_intent.setAction("org.rqsrd.schedule.DISMISS_ALARM")
+        dimiss_alarm_intent.setAction("org.rqsrd.schedule.STOP_SERVICE")
         pendingItent = PendingIntent.getBroadcast(
-            context, self.requestCode, dimiss_alarm_intent, PendingIntent.FLAG_ONE_SHOT)
+            context, self.requestCode, dimiss_alarm_intent, PendingIntent.FLAG_UPDATE_CURRENT)
         alarm = cast(AlarmManager, context.getSystemService(
             Context.ALARM_SERVICE))
         alarm.setExact(AlarmManager.RTC_WAKEUP,

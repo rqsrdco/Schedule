@@ -118,6 +118,7 @@ android.gradle_dependencies = androidx.work:work-runtime:2.2.0
 android.enable_androidx = True
 # (list) Java classes to add as activities to the manifest.
 
+android.wakelock = True
 #android.add_activities = org.rqsrd.kivyalarm.ReScheduleActivity
 
 
@@ -127,7 +128,7 @@ android.logcat_filters = *:S python:D
 
 # (str) The Android arch to build for, choices: armeabi-v7a, arm64-v8a, x86, x86_64
 
-android.arch = arm64-v8a
+android.archs = arm64-v8a
 
 # (bool) enables Android auto backup feature (Android API >=23)
 

@@ -16,6 +16,8 @@ from oscpy.client import OSCClient
 
 CLIENT = OSCClient('localhost', 3002)
 stopped = False
+broadcast_receiver = None
+pending_alarm = False
 
 if platform == 'android':
     from jnius import autoclass
@@ -37,13 +39,6 @@ def stop_service():
         PythonService.mService.setAutoRestartService(False)
     global stopped
     stopped = True
-
-
-def wake_app():
-    Logger.info("wake_app %s" % (datetime.now()))
-    intent = activity.getPackageManager().getLaunchIntentForPackage(
-        'org.rqsrd.schedule')
-    activity.startActivity(intent)
 
 
 if __name__ == '__main__':

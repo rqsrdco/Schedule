@@ -30,15 +30,27 @@ import java.time.format.DateTimeFormatter;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 
+import android.app.Notification;
+import androidx.core.app.NotificationCompat;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.media.AudioAttributes;
+import android.media.RingtoneManager;
+import android.net.Uri;
+
 public class RunAfterBootService extends Service {
-    private static final String TAG = "BOOT_BROADCAST_SERVICE";
+    private static final String TAG = "RQSRD_BOOT_SERVICE";
     private static final String ALARM_FILE = "scheduled.json";
     private static final String TIME_PATTERN = "E dd/MM/yyyy hh:mm a";
+
+    private static final String CHANNEL_ID = "org.rqsrd.schedule.RQSRD_BOOT_SERVICE";
+    private static final int NOTIFICATION_ID = 555;
 
     private static String ALARM_TITLE;
     private static String ALARM_TICKER;
     private static String ALARM_DESCRIPTIONS;
     private static long ALARM_TIME_FIRE;
+    private static String ALARM_TIME_MSG;
 
     public RunAfterBootService() {
     }
@@ -82,9 +94,10 @@ public class RunAfterBootService extends Service {
                     ALARM_DESCRIPTIONS = json.getString("description");
                     DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TIME_PATTERN);
                     LocalDateTime dateTime = LocalDateTime.parse(alarmTime, formatter);
+                    ALARM_TIME_MSG = dateTime.format(formatter);
                     long dateTimeMillis = dateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
                     ALARM_TIME_FIRE = dateTimeMillis;
-                    Log.d(TAG, String.valueOf(dateTimeMillis));
+                    Log.d(TAG, ALARM_TIME_MSG);
                 }
             } catch (IOException e) {
                 Log.d(TAG, "IOException: " + e.getMessage());
@@ -103,18 +116,12 @@ public class RunAfterBootService extends Service {
         intent.putExtra("title", ALARM_TITLE);
         intent.putExtra("ticker", ALARM_TICKER);
         intent.putExtra("description", ALARM_DESCRIPTIONS);
+        intent.putExtra("isBoot", true);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 181864, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT);
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ALARM_TIME_FIRE,
                 pendingIntent);
-        //------------------
-        //PendingIntent sender = PendingIntent.getBroadcast(context, 0, intent, 0);
-        //AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        //Intent showIntent = new Intent(context, RqsAlarmReceiver.class);
-        //PendingIntent showOperation = PendingIntent.getActivity(context, 0, showIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-        //AlarmManager.AlarmClockInfo alarmClockInfo = new AlarmManager.AlarmClockInfo(ALARM_TIME_FIRE, showOperation);
-        //am.setAlarmClock(alarmClockInfo, sender);
     }
 
     @Override
@@ -125,17 +132,59 @@ public class RunAfterBootService extends Service {
         ALARM_TICKER = "";
         ALARM_DESCRIPTIONS = "";
         ALARM_TIME_FIRE = 0;
+        ALARM_TIME_MSG = "";
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId){
         Log.d(TAG, "onStartCommand");
-        checkScheduledAlarm(this);
-        if(ALARM_TIME_FIRE != 0) {
-            rescheduleTask(this);
-        } else {
-            Log.d(TAG, "No alarm scheduled");
+        boolean isStop = intent.getBooleanExtra("isStop", false);
+        if (isStop == false) {
+            Log.d(TAG, String.valueOf(isStop));
+            checkScheduledAlarm(this);
+            if (ALARM_TIME_FIRE != 0) {
+                rescheduleTask(this);
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    NotificationChannel channel = new NotificationChannel(CHANNEL_ID, ALARM_TICKER,
+                            NotificationManager.IMPORTANCE_DEFAULT);
+                    channel.setDescription(ALARM_TIME_MSG);
+                    channel.setSound(null, null);
+                    channel.setVibrationPattern(new long[] { 0 });
+                    channel.enableVibration(false);
+                    channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+                    NotificationManager notificationManager = (NotificationManager) getSystemService(
+                            Context.NOTIFICATION_SERVICE);
+                    notificationManager.createNotificationChannel(channel);
+                }
+                Uri uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                Notification builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                        .setSmallIcon(this.getApplicationInfo().icon)
+                        .setContentTitle(ALARM_TIME_MSG)
+                        .setContentText(ALARM_TICKER)
+                        .setStyle(new NotificationCompat.BigTextStyle().bigText(ALARM_DESCRIPTIONS))
+                        .setTicker(ALARM_TICKER)
+                        .setSound(uri)
+                        .setAutoCancel(true)
+                        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                        .setOnlyAlertOnce(true)
+                        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                        .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                        .build();
+
+                startForeground(NOTIFICATION_ID, builder);
+            } else {
+                Log.d(TAG, "No alarm scheduled");
+                stopForeground(true);
+                stopSelf();
+            }
         }
+        if (isStop == true) {
+            Log.d(TAG, String.valueOf(isStop));
+            stopForeground(true);
+            stopSelf();
+        }
+        
         return START_NOT_STICKY;
         //return super.onStartCommand(intent, flags, startId);
     }

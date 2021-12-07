@@ -24,16 +24,16 @@ import android.widget.Toast;
 import android.app.AlarmManager;
 import android.app.ActivityManager;
 import java.lang.Class;
+import java.lang.System;
 import android.os.PowerManager;
 
 import org.rqsrd.schedule.RunAfterBootService;
-import org.rqsrd.schedule.ServiceRqsrdservice;
 
 
 public class RqsAlarmReceiver extends BroadcastReceiver {
 
-    public static final String TAG = "RQSRD_ALARM_RECEIVER";
-    public static final String CHANNEL_ID = "REACTION_ALARM";
+    public static final String TAG = "RQSRD_RECEIVER";
+    public static final String CHANNEL_ID = "org.rqsrd.schedule.RQSRD_RECEIVER";
     public static final int NOTIFICATION_ID = 11235813;
 
     private PowerManager.WakeLock mWakeLock;
@@ -71,11 +71,17 @@ public class RqsAlarmReceiver extends BroadcastReceiver {
         //int notification_id = (int)(Math.random()*(8000-1+1)+1);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(context.getApplicationInfo().icon).setContentTitle(title).setContentText(description)
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(description)).setTicker(ticker)
-                .setVibrate(new long[] { 500, 500, 500, 500, 500, 500 }).setSound(uri).setAutoCancel(true)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC).setOnlyAlertOnce(false)
-                .setPriority(NotificationCompat.PRIORITY_HIGH).setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setSmallIcon(context.getApplicationInfo().icon)
+                .setContentTitle(title)
+                .setContentText(description)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(description))
+                .setTicker(ticker)
+                .setVibrate(new long[] { 500, 500, 500, 500, 500, 500 })
+                .setSound(uri).setAutoCancel(true)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setOnlyAlertOnce(false)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
                 .setFullScreenIntent(fullScreenPendingIntent, true);
 
         NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
@@ -102,6 +108,18 @@ public class RqsAlarmReceiver extends BroadcastReceiver {
     private void startServiceDirectly(Context context, Class<?> serviceClass) {
         Log.d(TAG, "Start service directly.");
         Intent startServiceIntent = new Intent(context, serviceClass);
+        startServiceIntent.putExtra("isStop", false);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(startServiceIntent);
+        } else {
+            context.startService(startServiceIntent);
+        }
+    }
+
+    private void stopServiceDirectly(Context context, Class<?> serviceClass) {
+        Log.d(TAG, "Stop service directly.");
+        Intent startServiceIntent = new Intent(context, serviceClass);
+        startServiceIntent.putExtra("isStop", true);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             context.startForegroundService(startServiceIntent);
         } else {
@@ -121,44 +139,39 @@ public class RqsAlarmReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        Log.d(TAG, "-----------------------------------");
         if (intent != null) {
             String action = intent.getAction();
             if (action != null) {
                 if (action.equals("org.rqsrd.schedule.WAKEUP_ALARM")) {
-                    Log.d(TAG, "Received wakeup alarm.");
+                    Log.d(TAG, "Received WAKEUP_ALARM.");
+                    //Intent startIntent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
                     PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
                     mWakeLock = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK |
                             PowerManager.ACQUIRE_CAUSES_WAKEUP |
                             PowerManager.ON_AFTER_RELEASE, "RqsAlarmReceiver");
                     mWakeLock.acquire();
+                    
                     String title = intent.getStringExtra("title");
                     String ticker = intent.getStringExtra("ticker");
                     String description = intent.getStringExtra("description");
                     this.createNotificationChannel(context);
                     this.sendNotification(context, title, ticker, description);
                 }
-                if (action.equals("org.rqsrd.schedule.DISMISS_ALARM")) {
-                    Log.d(TAG, "Received dismiss alarm.");
+                if (action.equals(Intent.ACTION_BOOT_COMPLETED)) {
+                    Log.d(TAG, "Received BOOT_COMPLETED.");
+                    this.startServiceDirectly(context, RunAfterBootService.class);
+                }
+                if(action.equals("org.rqsrd.schedule.STOP_SERVICE")) {
+                    Log.d(TAG, "Received STOP_SERVICE.");
                     if (mWakeLock != null) {
                         mWakeLock.release();
                     }
                     if (isServiceRunning(context, RunAfterBootService.class)) {
                         Log.d(TAG, "isServiceRunning");
-                        try {
-                            Log.d(TAG, "Call Stopping RunAfterBootService");
-                            //context.stopService(new Intent(context, RunAfterBootService.class));
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error stopping RunAfterBootService");
-                        }
+                        this.stopServiceDirectly(context, RunAfterBootService.class);
                     }
-                }
-                if (action.equals(Intent.ACTION_BOOT_COMPLETED)) {
-                    Log.d(TAG, "Received boot completed.");
-                    this.startServiceDirectly(context, RunAfterBootService.class);
                 }
             }
         }
-        Log.d(TAG, "-----------------------------------");
     }
 }

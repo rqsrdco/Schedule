@@ -6,12 +6,15 @@ AndroidManifest.tmpl.xml
     android:exported="false">
     <intent-filter>
         <action android:name="org.rqsrd.schedule.WAKEUP_ALARM" />
-        <action android:name="org.rqsrd.schedule.DISMISS_ALARM" />
+        <action android:name="org.rqsrd.schedule.STOP_SERVICE" />
         <action android:name="android.intent.action.BOOT_COMPLETED"/>
     </intent-filter>
 </receiver>
 
-<service android:name=".RunAfterBootService" />
+<service 
+    android:name=".RunAfterBootService"
+    android:exported="false">
+</service>
 ```
 
 buildozer.spec
@@ -123,5 +126,5 @@ adb shell logcat | grep org.rqsrd.schedule
 adb shell logcat | grep RQSRD_ALARM_RECEIVER
 buildozer android adb -- logcat -s python,service,AndroidRuntime
 buildozer android adb -- logcat | grep -i python
-adb logcat | grep -E "python|RQSRD_ALARM_RECEIVER|org.rqsrd.schedule|BOOT_BROADCAST_SERVICE"
+adb logcat | grep -E "RQSRD_RECEIVER|org.rqsrd.schedule|RQSRD_BOOT_SERVICE"
 ```
