@@ -26,6 +26,7 @@ import android.app.ActivityManager;
 import java.lang.Class;
 import java.lang.System;
 import android.os.PowerManager;
+import java.util.List;
 
 import org.rqsrd.schedule.RunAfterBootService;
 
@@ -37,7 +38,6 @@ public class RqsAlarmReceiver extends BroadcastReceiver {
     public static final int NOTIFICATION_ID = 11235813;
 
     private PowerManager.WakeLock mWakeLock;
-    private boolean isDismiss = false;
 
     private void createNotificationChannel(Context context) {
 
@@ -62,10 +62,9 @@ public class RqsAlarmReceiver extends BroadcastReceiver {
         }
     }
     
-    private void sendNotification(Context context, String title, String ticker, String description, boolean isDismiss) {
+    private void sendNotification(Context context, String title, String ticker, String description) {
         Intent fullScreenIntent = new Intent(context, PythonActivity.class);
         fullScreenIntent.putExtra("alarmIsOn", true);
-        fullScreenIntent.putExtra("isDismiss", isDismiss);
         PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(context, 654321, fullScreenIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT);
 
@@ -139,6 +138,20 @@ public class RqsAlarmReceiver extends BroadcastReceiver {
         return false;
     }
 
+    public static boolean isAppRunning(Context context, String packageName) {
+        final ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        final List<ActivityManager.RunningAppProcessInfo> procInfos = activityManager.getRunningAppProcesses();
+        if (procInfos != null)
+        {
+            for (final ActivityManager.RunningAppProcessInfo processInfo : procInfos) {
+                if (processInfo.processName.equals(packageName)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     @Override
     public void onReceive(Context context, Intent intent) {
         if (intent != null) {
@@ -146,6 +159,7 @@ public class RqsAlarmReceiver extends BroadcastReceiver {
             if (action != null) {
                 if (action.equals("org.rqsrd.schedule.WAKEUP_ALARM")) {
                     Log.d(TAG, "Received WAKEUP_ALARM.");
+                    Log.d(TAG, "isAppRunning -> " + String.valueOf(isAppRunning(context, context.getPackageName())));
                     //Intent startIntent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
                     PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
                     mWakeLock = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK |
@@ -157,11 +171,10 @@ public class RqsAlarmReceiver extends BroadcastReceiver {
                     String ticker = intent.getStringExtra("ticker");
                     String description = intent.getStringExtra("description");
                     this.createNotificationChannel(context);
-                    this.sendNotification(context, title, ticker, description,isDismiss);
+                    this.sendNotification(context, title, ticker, description);
                 }
                 if (action.equals(Intent.ACTION_BOOT_COMPLETED)) {
                     Log.d(TAG, "Received BOOT_COMPLETED.");
-                    isDismiss = true;
                     this.startServiceDirectly(context, RunAfterBootService.class);
                 }
                 if(action.equals("org.rqsrd.schedule.STOP_SERVICE")) {
@@ -173,7 +186,6 @@ public class RqsAlarmReceiver extends BroadcastReceiver {
                         Log.d(TAG, "isServiceRunning");
                         this.stopServiceDirectly(context, RunAfterBootService.class);
                     }
-                    isDismiss = false;
                 }
             }
         }

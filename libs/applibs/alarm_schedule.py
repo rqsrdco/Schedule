@@ -56,7 +56,6 @@ class RqsAlarmSchedule:
         alarmIntent.putExtra("title", String(alarm_title))
         alarmIntent.putExtra("ticker", String(alarm_ticker))
         alarmIntent.putExtra("description", String(alarm_description))
-        alarmIntent.putExtra("isBoot", False)
         pendingIntent = PendingIntent.getBroadcast(
             context, self.requestCode, alarmIntent, PendingIntent.FLAG_UPDATE_CURRENT)
         alarm = cast(

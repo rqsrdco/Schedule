@@ -116,7 +116,6 @@ public class RunAfterBootService extends Service {
         intent.putExtra("title", ALARM_TITLE);
         intent.putExtra("ticker", ALARM_TICKER);
         intent.putExtra("description", ALARM_DESCRIPTIONS);
-        intent.putExtra("isBoot", true);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(context, 181864, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT);
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
@@ -162,7 +161,7 @@ public class RunAfterBootService extends Service {
                         .setSmallIcon(this.getApplicationInfo().icon)
                         .setContentTitle(ALARM_TIME_MSG)
                         .setContentText(ALARM_TICKER)
-                        .setStyle(new NotificationCompat.BigTextStyle().bigText(ALARM_DESCRIPTIONS))
+                        .setStyle(new NotificationCompat.BigTextStyle().bigText(ALARM_TICKER))
                         .setTicker(ALARM_TICKER)
                         .setSound(uri)
                         .setAutoCancel(true)

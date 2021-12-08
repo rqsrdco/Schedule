@@ -51,11 +51,6 @@ if platform == 'android':
     from libs.applibs.alarm_schedule import RqsAlarmSchedule
     from libs.applibs.notification import cancel_notification, notify
 
-    PACKAGE_NAME = u'org.rqsrd.schedule'
-    SERVICE_NAME = u'{packagename}.Service{servicename}'.format(
-        packagename=PACKAGE_NAME,
-        servicename=u'Rqsrdservice',
-    )
     APP_STARTUP_PERMISSIONS = [
         Permission.INTERNET,
         Permission.READ_EXTERNAL_STORAGE,
@@ -113,7 +108,6 @@ class AlarmClockApp(MDApp):
     str_timestamp = "%a %d/%m/%Y %I:%M %p"
     timestamp_data = P.ObjectProperty(allownone=True)
     service = None
-    can_dismiss = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -273,7 +267,6 @@ class AlarmClockApp(MDApp):
     def on_new_intent(self, intent):
         if intent.getStringExtra("exit") == "exit":
             self.handle_exit_app()
-        self.can_dismiss = intent.getBooleanExtra("isDismiss", False)
         if intent.getBooleanExtra("alarmIsOn", False):
             self.root.alarm_option.option_timestamp = self.timestamp_data
             self.set_window_flags()
@@ -326,8 +319,7 @@ class AlarmClockApp(MDApp):
                 self.show_notification_setAlarm(
                     object.option_timestamp, ticker, description, text)
         else:
-            if self.can_dismiss:
-                RqsAlarmSchedule().dimiss_alarm()
+            RqsAlarmSchedule().dimiss_alarm()
             RqsAlarmSchedule().cancel_alarm()
             self.save_scheduled_task(self.alarm_default)
             object.option_timestamp = None
