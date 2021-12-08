@@ -37,6 +37,7 @@ public class RqsAlarmReceiver extends BroadcastReceiver {
     public static final int NOTIFICATION_ID = 11235813;
 
     private PowerManager.WakeLock mWakeLock;
+    private boolean isDismiss = false;
 
     private void createNotificationChannel(Context context) {
 
@@ -61,9 +62,10 @@ public class RqsAlarmReceiver extends BroadcastReceiver {
         }
     }
     
-    private void sendNotification(Context context, String title, String ticker, String description) {
+    private void sendNotification(Context context, String title, String ticker, String description, boolean isDismiss) {
         Intent fullScreenIntent = new Intent(context, PythonActivity.class);
         fullScreenIntent.putExtra("alarmIsOn", true);
+        fullScreenIntent.putExtra("isDismiss", isDismiss);
         PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(context, 654321, fullScreenIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT);
 
@@ -155,10 +157,11 @@ public class RqsAlarmReceiver extends BroadcastReceiver {
                     String ticker = intent.getStringExtra("ticker");
                     String description = intent.getStringExtra("description");
                     this.createNotificationChannel(context);
-                    this.sendNotification(context, title, ticker, description);
+                    this.sendNotification(context, title, ticker, description,isDismiss);
                 }
                 if (action.equals(Intent.ACTION_BOOT_COMPLETED)) {
                     Log.d(TAG, "Received BOOT_COMPLETED.");
+                    isDismiss = true;
                     this.startServiceDirectly(context, RunAfterBootService.class);
                 }
                 if(action.equals("org.rqsrd.schedule.STOP_SERVICE")) {
@@ -170,6 +173,7 @@ public class RqsAlarmReceiver extends BroadcastReceiver {
                         Log.d(TAG, "isServiceRunning");
                         this.stopServiceDirectly(context, RunAfterBootService.class);
                     }
+                    isDismiss = false;
                 }
             }
         }

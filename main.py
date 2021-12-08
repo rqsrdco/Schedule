@@ -113,7 +113,7 @@ class AlarmClockApp(MDApp):
     str_timestamp = "%a %d/%m/%Y %I:%M %p"
     timestamp_data = P.ObjectProperty(allownone=True)
     service = None
-    pending_alarm = False
+    can_dismiss = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -218,108 +218,6 @@ class AlarmClockApp(MDApp):
         self.time_dialog = MDTimePicker()
         self.time_dialog.set_time(time(hour=today.hour, minute=today.minute))
 
-    def on_start(self):
-        if platform == 'android':
-            self.request_app_permissions()
-            self.start_service()
-            activity.bind(on_new_intent=self.on_new_intent)
-            # self.on_new_intent(mActivity.getIntent())
-        self.load_alarm_scheduled()
-        Clock.schedule_interval(self.root.update_current_datetime_guest, 1)
-
-    def on_pause(self):
-        Clock.unschedule(self.root.update_current_datetime_guest)
-        self.stop_service()
-        return True
-
-    def on_resume(self):
-        self.start_service()
-        Clock.schedule_interval(self.root.update_current_datetime_guest, 1)
-
-    def _get_audiomanager(self):
-        if not hasattr(self, 'audiomanager'):
-            if platform == 'android':
-                context = PythonActivity.mActivity.getApplicationContext()
-                Context = autoclass('android.content.Context')
-                self.audiomanager = context.getSystemService(
-                    Context.AUDIO_SERVICE)
-        return self.audiomanager
-
-    def _get_ringtone(self):
-        if not hasattr(self, 'ringtone'):
-            if platform == 'android':
-                RingtoneManager = autoclass('android.media.RingtoneManager')
-                AudioManager = autoclass('android.media.AudioManager')
-                u = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                self.ringtone = RingtoneManager.getRingtone(
-                    PythonActivity.mActivity.getApplicationContext(), u)
-                self.ringtone.setStreamType(AudioManager.STREAM_ALARM)
-        return self.ringtone
-
-    def _get_vibrator(self):
-        if not hasattr(self, 'vibrator') and platform == 'android':
-            Context = autoclass('android.content.Context')
-            self.vibrator = PythonActivity.mActivity.getApplicationContext().getSystemService(
-                Context.VIBRATOR_SERVICE)
-        return self.vibrator
-
-    @run_on_ui_thread
-    def set_window_flags(self):
-        LayoutParams = autoclass('android.view.WindowManager$LayoutParams')
-        mActivity.getWindow().addFlags(
-            LayoutParams.FLAG_KEEP_SCREEN_ON |
-            LayoutParams.FLAG_DISMISS_KEYGUARD |
-            LayoutParams.FLAG_SHOW_WHEN_LOCKED |
-            LayoutParams.FLAG_TURN_SCREEN_ON)
-
-    @run_on_ui_thread
-    def reset_window_flags(self):
-        LayoutParams = autoclass('android.view.WindowManager$LayoutParams')
-        mActivity.getWindow().clearFlags(
-            LayoutParams.FLAG_KEEP_SCREEN_ON |
-            LayoutParams.FLAG_DISMISS_KEYGUARD |
-            LayoutParams.FLAG_SHOW_WHEN_LOCKED |
-            LayoutParams.FLAG_TURN_SCREEN_ON)
-
-    def fire_alarm(self):
-        if platform == 'android':
-            AudioManager = autoclass('android.media.AudioManager')
-            am = self._get_audiomanager()
-            am.setStreamVolume(AudioManager.STREAM_ALARM,
-                               am.getStreamMaxVolume(
-                                   AudioManager.STREAM_ALARM),
-                               0)
-            self.ringer_mode = am.getRingerMode()
-            am.setRingerMode(AudioManager.RINGER_MODE_NORMAL)
-            self._get_ringtone().play()
-            self._get_vibrator().vibrate([0, 500, 500], 1)
-
-    def stop_alarm(self):
-        assert hasattr(self, 'ringer_mode')
-        self._get_ringtone().stop()
-        if platform == 'android':
-            AudioManager = autoclass('android.media.AudioManager')
-            am = self._get_audiomanager()
-            am.setStreamVolume(AudioManager.STREAM_ALARM,
-                               am.getStreamMaxVolume(
-                                   AudioManager.STREAM_ALARM),
-                               0)
-            am.setRingerMode(self.ringer_mode)
-            # am.setRingerMode(AudioManager.RINGER_MODE_SILENT)
-            self._get_vibrator().cancel()
-        # self.reset_window_flags()
-
-    def on_new_intent(self, intent):
-        if intent.getStringExtra("exit") == "exit":
-            self.handle_exit_app()
-        if intent.getBooleanExtra("alarmIsOn", False):
-            time_temp = self.timestamp_data
-            self.timestamp_data = None
-            self.root.alarm_option.option_timestamp = time_temp
-            self.activity_alarm = True
-            self.pending_alarm = True
-            self.fire_alarm()
-
     def on_timestamp_data(self, instance, value):
         if value is not None:
             self.root.alarm_option.ids.lbl_time.font_size = sp(18)
@@ -349,11 +247,38 @@ class AlarmClockApp(MDApp):
                 if seconds % 2 != 0:
                     _text = "_(-_-)_"
             self.root.alarm_option.text = _text
-        else:
-            self.timestamp_data = None
+
+    def on_start(self):
+        if platform == 'android':
+            self.request_app_permissions()
+            self.start_service()
+            activity.bind(on_new_intent=self.on_new_intent)
+            # self.on_new_intent(mActivity.getIntent())
+        self.load_alarm_scheduled()
+        Clock.schedule_interval(self.root.update_current_datetime_guest, 1)
+
+    def on_pause(self):
+        Clock.unschedule(self.root.update_current_datetime_guest)
+        self.stop_service()
+        return True
+
+    def on_resume(self):
+        self.start_service()
+        Clock.schedule_interval(self.root.update_current_datetime_guest, 1)
+
+    def on_stop(self):
+        self.stop_service()
+        Clock.unschedule(self.root.update_current_datetime_guest)
+
+    def on_new_intent(self, intent):
+        if intent.getStringExtra("exit") == "exit":
+            self.handle_exit_app()
+        self.can_dismiss = intent.getBooleanExtra("isDismiss", False)
+        if intent.getBooleanExtra("alarmIsOn", False):
+            self.root.alarm_option.option_timestamp = self.timestamp_data
+            self.set_window_flags()
 
     def load_alarm_scheduled(self):
-        print("load_alarm_scheduled", self.pending_alarm)
         task = self.load_scheduled_task()
         if (not(task.get("alarm_time") and task.get("alarm_time").strip())):
             self.root.alarm_option.option_timestamp = None
@@ -365,14 +290,11 @@ class AlarmClockApp(MDApp):
             now = datetime.now()
             if alarm_datetime > now:
                 self.root.alarm_option.option_timestamp = alarm_datetime
-                self.activity_alarm = True
                 self.timestamp_data = alarm_datetime
+                self.activity_alarm = True
             else:
-                self.timestamp_data = None
                 self.root.alarm_option.option_timestamp = alarm_datetime
                 self.activity_alarm = True
-                self.pending_alarm = True
-                self.fire_alarm()
 
     def set_alarm(self, object):
         if not self.activity_alarm:
@@ -401,20 +323,16 @@ class AlarmClockApp(MDApp):
                                                 title, ticker, description)
                 self.save_scheduled_task(task)
                 self.activity_alarm = True
-                self.set_window_flags()
                 self.show_notification_setAlarm(
                     object.option_timestamp, ticker, description, text)
         else:
-            if self.pending_alarm:
-                self.stop_alarm()
+            if self.can_dismiss:
                 RqsAlarmSchedule().dimiss_alarm()
-            else:
-                RqsAlarmSchedule().cancel_alarm()
+            RqsAlarmSchedule().cancel_alarm()
             self.save_scheduled_task(self.alarm_default)
             object.option_timestamp = None
             self.timestamp_data = None
             self.activity_alarm = False
-            self.pending_alarm = False
             cancel_notification()
             self.reset_window_flags()
             android_toast("Đã hủy báo thức")
@@ -454,6 +372,71 @@ class AlarmClockApp(MDApp):
                     alarm_option.option_timestamp = None
                     alarm_option.id_type = None
                     alarm_option.wobble()
+
+    def _get_audiomanager(self):
+        if not hasattr(self, 'audiomanager'):
+            if platform == 'android':
+                context = PythonActivity.mActivity.getApplicationContext()
+                Context = autoclass('android.content.Context')
+                self.audiomanager = context.getSystemService(
+                    Context.AUDIO_SERVICE)
+        return self.audiomanager
+
+    def _get_ringtone(self):
+        if not hasattr(self, 'ringtone'):
+            if platform == 'android':
+                RingtoneManager = autoclass('android.media.RingtoneManager')
+                AudioManager = autoclass('android.media.AudioManager')
+                u = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                self.ringtone = RingtoneManager.getRingtone(
+                    PythonActivity.mActivity.getApplicationContext(), u)
+                self.ringtone.setStreamType(AudioManager.STREAM_ALARM)
+        return self.ringtone
+
+    def _get_vibrator(self):
+        if not hasattr(self, 'vibrator') and platform == 'android':
+            Context = autoclass('android.content.Context')
+            self.vibrator = PythonActivity.mActivity.getApplicationContext().getSystemService(
+                Context.VIBRATOR_SERVICE)
+        return self.vibrator
+
+    @run_on_ui_thread
+    def set_window_flags(self):
+        LayoutParams = autoclass('android.view.WindowManager$LayoutParams')
+        mActivity.getWindow().addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+    @run_on_ui_thread
+    def reset_window_flags(self):
+        LayoutParams = autoclass('android.view.WindowManager$LayoutParams')
+        mActivity.getWindow().clearFlags(LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+    def fire_alarm(self):
+        if platform == 'android':
+            AudioManager = autoclass('android.media.AudioManager')
+            am = self._get_audiomanager()
+            am.setStreamVolume(AudioManager.STREAM_ALARM,
+                               am.getStreamMaxVolume(
+                                   AudioManager.STREAM_ALARM),
+                               0)
+            self.ringer_mode = am.getRingerMode()
+            am.setRingerMode(AudioManager.RINGER_MODE_NORMAL)
+            self._get_ringtone().play()
+            self._get_vibrator().vibrate([0, 500, 500], 1)
+
+    def stop_alarm(self):
+        assert hasattr(self, 'ringer_mode')
+        self._get_ringtone().stop()
+        if platform == 'android':
+            AudioManager = autoclass('android.media.AudioManager')
+            am = self._get_audiomanager()
+            am.setStreamVolume(AudioManager.STREAM_ALARM,
+                               am.getStreamMaxVolume(
+                                   AudioManager.STREAM_ALARM),
+                               0)
+            am.setRingerMode(self.ringer_mode)
+            # am.setRingerMode(AudioManager.RINGER_MODE_SILENT)
+            self._get_vibrator().cancel()
+        # self.reset_window_flags()
 
 
 if __name__ == "__main__":

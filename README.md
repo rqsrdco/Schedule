@@ -1,3 +1,5 @@
+![image](assets/images/off.jpg)
+![image](assets/images/on.jpg)
 AndroidManifest.tmpl.xml
 ```
 <receiver
@@ -126,5 +128,5 @@ adb shell logcat | grep org.rqsrd.schedule
 adb shell logcat | grep RQSRD_ALARM_RECEIVER
 buildozer android adb -- logcat -s python,service,AndroidRuntime
 buildozer android adb -- logcat | grep -i python
-adb logcat | grep -E "RQSRD_RECEIVER|org.rqsrd.schedule|RQSRD_BOOT_SERVICE"
+adb logcat | grep -E "RQSRD_RECEIVER|RQSRD_BOOT_SERVICE|org.rqsrd.schedule"
 ```
