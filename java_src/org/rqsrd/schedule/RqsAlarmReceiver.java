@@ -119,12 +119,12 @@ public class RqsAlarmReceiver extends BroadcastReceiver {
 
     private void stopServiceDirectly(Context context, Class<?> serviceClass) {
         Log.d(TAG, "Stop service directly.");
-        Intent startServiceIntent = new Intent(context, serviceClass);
-        startServiceIntent.putExtra("isStop", true);
+        Intent stopServiceIntent = new Intent(context, serviceClass);
+        stopServiceIntent.putExtra("isStop", true);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(startServiceIntent);
+            context.startForegroundService(stopServiceIntent);
         } else {
-            context.startService(startServiceIntent);
+            context.startService(stopServiceIntent);
         }
     }
     
@@ -159,7 +159,6 @@ public class RqsAlarmReceiver extends BroadcastReceiver {
             if (action != null) {
                 if (action.equals("org.rqsrd.schedule.WAKEUP_ALARM")) {
                     Log.d(TAG, "Received WAKEUP_ALARM.");
-                    Log.d(TAG, "isAppRunning -> " + String.valueOf(isAppRunning(context, context.getPackageName())));
                     //Intent startIntent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
                     PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
                     mWakeLock = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK |

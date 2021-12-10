@@ -125,7 +125,7 @@ buildozer -v android debug deploy run logcat > my_log.txt
 adb logcat org.rqsrd.schedule:D *:S
 adb logcat *:S python:D
 adb shell logcat | grep org.rqsrd.schedule
-adb shell logcat | grep RQSRD_ALARM_RECEIVER
+adb shell logcat | grep RQSRD_RECEIVER
 buildozer android adb -- logcat -s python,service,AndroidRuntime
 buildozer android adb -- logcat | grep -i python
 adb logcat | grep -E "RQSRD_RECEIVER|RQSRD_BOOT_SERVICE|org.rqsrd.schedule"

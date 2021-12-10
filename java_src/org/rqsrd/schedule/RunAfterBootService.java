@@ -138,8 +138,8 @@ public class RunAfterBootService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId){
         Log.d(TAG, "onStartCommand");
         boolean isStop = intent.getBooleanExtra("isStop", false);
+        Log.d(TAG, "isStop -> " + String.valueOf(isStop));
         if (isStop == false) {
-            Log.d(TAG, String.valueOf(isStop));
             checkScheduledAlarm(this);
             if (ALARM_TIME_FIRE != 0) {
                 rescheduleTask(this);
@@ -179,7 +179,6 @@ public class RunAfterBootService extends Service {
             }
         }
         if (isStop == true) {
-            Log.d(TAG, String.valueOf(isStop));
             stopForeground(true);
             stopSelf();
         }

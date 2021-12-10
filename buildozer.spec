@@ -28,7 +28,7 @@ version.filename = %(source.dir)s/main.py
 
 # comma separated e.g. requirements = sqlite3,kivy
 
-requirements = python3,kivy==master,https://github.com/kivymd/KivyMD/archive/master.zip,pygments,sdl2_ttf==2.0.15,pillow,openssl,urllib3,certifi,requests,chardet,idna,android,plyer,pyjnius,oscpy
+requirements = python3==3.9.7,hostpython3==3.9.7,kivy==master,https://github.com/kivymd/KivyMD/archive/master.zip,pygments,sdl2_ttf==2.0.15,pillow,openssl,urllib3,certifi,requests,chardet,idna,android,plyer,pyjnius,oscpy
 
 presplash.filename = %(source.dir)s/assets/icons/presplash.png
 

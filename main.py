@@ -30,7 +30,7 @@ from oscpy.client import OSCClient
 from oscpy.server import OSCThreadServer
 
 if platform == 'android':
-    from android import activity, mActivity
+    from android import activity
     from android.runnable import run_on_ui_thread
     from jnius import autoclass, cast, JavaException
     from android.config import ACTIVITY_CLASS_NAME, SERVICE_CLASS_NAME
@@ -38,6 +38,7 @@ if platform == 'android':
     from android.permissions import request_permissions, Permission
 
     PythonActivity = autoclass('org.kivy.android.PythonActivity')
+    mActivity = PythonActivity.mActivity
     Uri = autoclass('android.net.Uri')
     Intent = autoclass('android.content.Intent')
     Context = autoclass('android.content.Context')
@@ -108,6 +109,7 @@ class AlarmClockApp(MDApp):
     str_timestamp = "%a %d/%m/%Y %I:%M %p"
     timestamp_data = P.ObjectProperty(allownone=True)
     service = None
+    pending_alarm = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -247,7 +249,7 @@ class AlarmClockApp(MDApp):
             self.request_app_permissions()
             self.start_service()
             activity.bind(on_new_intent=self.on_new_intent)
-            # self.on_new_intent(mActivity.getIntent())
+            self.on_new_intent(mActivity.getIntent())
         self.load_alarm_scheduled()
         Clock.schedule_interval(self.root.update_current_datetime_guest, 1)
 
@@ -267,9 +269,9 @@ class AlarmClockApp(MDApp):
     def on_new_intent(self, intent):
         if intent.getStringExtra("exit") == "exit":
             self.handle_exit_app()
-        if intent.getBooleanExtra("alarmIsOn", False):
+        self.pending_alarm = intent.getBooleanExtra("alarmIsOn", False)
+        if self.pending_alarm:
             self.root.alarm_option.option_timestamp = self.timestamp_data
-            self.set_window_flags()
 
     def load_alarm_scheduled(self):
         task = self.load_scheduled_task()
@@ -318,9 +320,13 @@ class AlarmClockApp(MDApp):
                 self.activity_alarm = True
                 self.show_notification_setAlarm(
                     object.option_timestamp, ticker, description, text)
+                self.set_window_flags()
         else:
-            RqsAlarmSchedule().dimiss_alarm()
-            RqsAlarmSchedule().cancel_alarm()
+            if self.pending_alarm:
+                RqsAlarmSchedule().dimiss_alarm()
+                self.pending_alarm = False
+            else:
+                RqsAlarmSchedule().cancel_alarm()
             self.save_scheduled_task(self.alarm_default)
             object.option_timestamp = None
             self.timestamp_data = None
@@ -368,7 +374,7 @@ class AlarmClockApp(MDApp):
     def _get_audiomanager(self):
         if not hasattr(self, 'audiomanager'):
             if platform == 'android':
-                context = PythonActivity.mActivity.getApplicationContext()
+                context = mActivity.getApplicationContext()
                 Context = autoclass('android.content.Context')
                 self.audiomanager = context.getSystemService(
                     Context.AUDIO_SERVICE)
@@ -381,14 +387,14 @@ class AlarmClockApp(MDApp):
                 AudioManager = autoclass('android.media.AudioManager')
                 u = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
                 self.ringtone = RingtoneManager.getRingtone(
-                    PythonActivity.mActivity.getApplicationContext(), u)
+                    mActivity.getApplicationContext(), u)
                 self.ringtone.setStreamType(AudioManager.STREAM_ALARM)
         return self.ringtone
 
     def _get_vibrator(self):
         if not hasattr(self, 'vibrator') and platform == 'android':
             Context = autoclass('android.content.Context')
-            self.vibrator = PythonActivity.mActivity.getApplicationContext().getSystemService(
+            self.vibrator = mActivity.getApplicationContext().getSystemService(
                 Context.VIBRATOR_SERVICE)
         return self.vibrator
 
